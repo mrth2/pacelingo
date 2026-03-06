@@ -59,6 +59,7 @@ class ChatProvider extends ChangeNotifier {
   bool get isListening => _audioState == ChatAudioState.listening;
   bool get isProcessing => _audioState == ChatAudioState.processing;
   bool get isSpeaking => _audioState == ChatAudioState.speaking;
+  bool get hasError => _error != null;
   String? get error => _error;
   Profile? get profile => _profile;
 
@@ -119,25 +120,46 @@ class ChatProvider extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   /// Begins recording the user's voice input.
+  ///
+  /// If the AI is currently speaking, interrupts TTS first and then starts
+  /// listening (walkie-talkie style interruption).
   Future<void> startListening() async {
+    // Handle interruption: stop TTS if AI is speaking, then start listening.
+    if (_audioState == ChatAudioState.speaking) {
+      await _flutterTts.stop();
+      _audioState = ChatAudioState.idle;
+      notifyListeners();
+    }
+
     if (_audioState != ChatAudioState.idle) return;
 
-    final available = await _speechToText.initialize(
-      onError: (error) {
-        _error = error.errorMsg;
-        _audioState = ChatAudioState.idle;
-        notifyListeners();
-      },
-    );
+    try {
+      final available = await _speechToText.initialize(
+        onError: (error) {
+          _error = 'Speech recognition error: ${error.errorMsg}';
+          _audioState = ChatAudioState.idle;
+          notifyListeners();
+        },
+      );
 
-    if (!available) {
-      _error = 'Microphone not available on this device.';
+      if (!available) {
+        _error =
+            'Microphone not available. Please ensure microphone permissions '
+            'are granted in your browser settings and try again.';
+        notifyListeners();
+        return;
+      }
+    } catch (e) {
+      _error = 'Microphone permission denied. On Web/PWA, please allow '
+          'microphone access when prompted by the browser.';
+      _audioState = ChatAudioState.idle;
       notifyListeners();
       return;
     }
 
     _audioState = ChatAudioState.listening;
     _liveTranscript = '';
+    _error = null;
     notifyListeners();
 
     _speechToText.listen(
@@ -213,12 +235,18 @@ class ChatProvider extends ChangeNotifier {
     }
 
     try {
-      final response = await _geminiService.sendMessage(
-        userMessage: userText,
-        profile: _profile!,
-        chatHistory: _messages,
-        previousSessionSummary: _previousSessionSummary,
-      );
+      final response = await _geminiService
+          .sendMessage(
+            userMessage: userText,
+            profile: _profile!,
+            chatHistory: _messages,
+            previousSessionSummary: _previousSessionSummary,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () =>
+                throw GeminiServiceException('Request timed out. Please try again.'),
+          );
 
       final aiMessage = ChatMessage(
         role: 'model',
@@ -239,6 +267,12 @@ class ChatProvider extends ChangeNotifier {
       _audioState = ChatAudioState.idle;
       notifyListeners();
     }
+  }
+
+  /// Clears the current error message.
+  void clearError() {
+    _error = null;
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
