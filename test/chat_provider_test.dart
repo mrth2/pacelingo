@@ -8,6 +8,7 @@ import 'package:pacelingo/models/session.dart';
 import 'package:pacelingo/providers/chat_provider.dart';
 import 'package:pacelingo/services/gemini_service.dart';
 import 'package:pacelingo/services/firestore_service.dart';
+import 'package:pacelingo/services/firebase_service.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -15,6 +16,8 @@ import 'package:pacelingo/services/firestore_service.dart';
 class MockGeminiService extends Mock implements GeminiService {}
 
 class MockFirestoreService extends Mock implements FirestoreService {}
+
+class MockFirebaseService extends Mock implements FirebaseService {}
 
 class MockSpeechToText extends Mock implements SpeechToText {}
 
@@ -26,6 +29,7 @@ class FakeChatMessage extends Fake implements ChatMessage {}
 void main() {
   late MockGeminiService mockGemini;
   late MockFirestoreService mockFirestore;
+  late MockFirebaseService mockFirebaseService;
   late MockSpeechToText mockStt;
   late MockFlutterTts mockTts;
   late ChatProvider provider;
@@ -38,6 +42,7 @@ void main() {
   setUp(() {
     mockGemini = MockGeminiService();
     mockFirestore = MockFirestoreService();
+    mockFirebaseService = MockFirebaseService();
     mockStt = MockSpeechToText();
     mockTts = MockFlutterTts();
 
@@ -58,6 +63,7 @@ void main() {
     provider = ChatProvider(
       geminiService: mockGemini,
       firestoreService: mockFirestore,
+      firebaseService: mockFirebaseService,
       speechToText: mockStt,
       flutterTts: mockTts,
     );

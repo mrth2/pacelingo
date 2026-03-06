@@ -68,6 +68,21 @@ void main() {
       expect(prompt, contains('Wife'));
       expect(prompt, contains(adultProfile.systemPromptRules));
     });
+
+    test('buildSystemPrompt includes next focus when provided in profile', () {
+      final profileWithFocus =
+          childProfile.copyWith(nextFocus: 'Focus on past tense verbs.');
+      final prompt = service.buildSystemPrompt(profileWithFocus);
+      expect(prompt, contains('PRIORITY FOCUS FOR THIS SESSION'));
+      expect(prompt, contains('Focus on past tense verbs.'));
+    });
+
+    test(
+        'buildSystemPrompt does NOT include next focus section when nextFocus is empty',
+        () {
+      final prompt = service.buildSystemPrompt(childProfile);
+      expect(prompt, isNot(contains('PRIORITY FOCUS FOR THIS SESSION')));
+    });
   });
 
   group('Profile model', () {
@@ -91,6 +106,7 @@ void main() {
       expect(map['age'], original.age);
       expect(map['english_level'], original.englishLevel);
       expect(map['system_prompt_rules'], original.systemPromptRules);
+      expect(map['next_focus'], original.nextFocus);
     });
 
     test('copyWith updates only specified fields', () {
@@ -101,6 +117,15 @@ void main() {
       expect(updated.age, 12);
       expect(updated.englishLevel, original.englishLevel);
       expect(updated.id, original.id);
+    });
+
+    test('copyWith updates nextFocus field', () {
+      final original = Profile.defaultChild();
+      final updated =
+          original.copyWith(nextFocus: 'Practice irregular verbs.');
+
+      expect(updated.nextFocus, 'Practice irregular verbs.');
+      expect(updated.name, original.name);
     });
   });
 }
