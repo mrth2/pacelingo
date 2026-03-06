@@ -245,7 +245,7 @@ class ChatProvider extends ChangeNotifier {
           .timeout(
             const Duration(seconds: 30),
             onTimeout: () =>
-                throw GeminiServiceException('Request timed out. Please try again.'),
+                throw GeminiServiceException('AI response timed out after 30 seconds. Please try again.'),
           );
 
       final aiMessage = ChatMessage(

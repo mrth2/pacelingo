@@ -81,14 +81,14 @@ void main() {
   // -------------------------------------------------------------------------
   group('clearError', () {
     test('clearError sets error to null and notifies listeners', () {
-      int notifyCount = 0;
-      provider.addListener(() => notifyCount++);
+      int listenerCallCount = 0;
+      provider.addListener(() => listenerCallCount++);
 
       // Manually we cannot set error directly, but clearError should be safe
       // to call even when there's no error.
       provider.clearError();
       expect(provider.hasError, isFalse);
-      expect(notifyCount, 1);
+      expect(listenerCallCount, 1);
     });
   });
 
