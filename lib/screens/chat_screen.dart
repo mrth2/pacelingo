@@ -6,8 +6,9 @@ import '../models/session.dart';
 import '../providers/chat_provider.dart';
 import '../providers/profile_provider.dart';
 
-/// The main tutoring chat screen with a Push-to-Talk microphone button,
-/// chat bubble transcript, and text input fallback.
+/// The main tutoring chat screen with an iPad-optimized layout, a massive
+/// walkie-talkie style Push-to-Talk microphone button, chat bubble transcript,
+/// and text input fallback.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -71,7 +72,7 @@ class _ChatScreenState extends State<ChatScreen> {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
+            constraints: const BoxConstraints(maxWidth: 860),
             child: Column(
               children: [
                 Expanded(
@@ -81,8 +82,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     liveTranscript: chatProvider.liveTranscript,
                   ),
                 ),
-                if (chatProvider.error != null) _ErrorBanner(chatProvider.error!),
-                _BottomInputBar(
+                if (chatProvider.hasError)
+                  _ErrorBanner(
+                    chatProvider.error!,
+                    onDismiss: chatProvider.clearError,
+                  ),
+                _BottomActionArea(
                   textController: _textController,
                   onSendText: () => _onSendText(context),
                   chatProvider: chatProvider,
@@ -146,17 +151,32 @@ class _MessageList extends StatelessWidget {
     final items = messages.length + (liveTranscript.isNotEmpty ? 1 : 0);
 
     if (items == 0) {
-      return const Center(
-        child: Text(
-          'Press the microphone to start speaking…',
-          style: TextStyle(color: Color(0xFF8D99AE), fontSize: 16),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.mic_rounded,
+                size: 64,
+                color: const Color(0xFF4361EE).withValues(alpha: 0.3),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Press the microphone to start speaking…',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF8D99AE), fontSize: 18),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return ListView.builder(
       controller: scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       itemCount: items,
       itemBuilder: (context, index) {
         if (index == messages.length && liveTranscript.isNotEmpty) {
@@ -189,6 +209,7 @@ class _ChatBubble extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Container(
+              constraints: const BoxConstraints(maxWidth: 560),
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -216,8 +237,8 @@ class _ChatBubble extends StatelessWidget {
                     message.text,
                     style: TextStyle(
                       color: _isUser ? Colors.white : const Color(0xFF2D3142),
-                      fontSize: 15,
-                      height: 1.4,
+                      fontSize: 16,
+                      height: 1.5,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -246,13 +267,13 @@ class _TutorAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
         color: const Color(0xFF4361EE),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: const Icon(Icons.school_rounded, color: Colors.white, size: 18),
+      child: const Icon(Icons.school_rounded, color: Colors.white, size: 20),
     );
   }
 }
@@ -311,15 +332,15 @@ class _LiveTranscriptBubble extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Bottom input bar
+// Bottom action area with text input and massive mic button
 // ---------------------------------------------------------------------------
 
-class _BottomInputBar extends StatelessWidget {
+class _BottomActionArea extends StatelessWidget {
   final TextEditingController textController;
   final VoidCallback onSendText;
   final ChatProvider chatProvider;
 
-  const _BottomInputBar({
+  const _BottomActionArea({
     required this.textController,
     required this.onSendText,
     required this.chatProvider,
@@ -328,110 +349,234 @@ class _BottomInputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIdle = chatProvider.audioState == ChatAudioState.idle;
-    final isListening = chatProvider.isListening;
     final isProcessing = chatProvider.isProcessing;
     final isSpeaking = chatProvider.isSpeaking;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Color(0x1A000000), blurRadius: 12, offset: Offset(0, -2)),
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 12,
+            offset: Offset(0, -2),
+          ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Text input
-          Expanded(
-            child: TextField(
-              controller: textController,
-              enabled: isIdle,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSendText(),
-              decoration: InputDecoration(
-                hintText: isProcessing
-                    ? 'AI is thinking…'
-                    : isSpeaking
-                        ? 'AI is speaking…'
-                        : 'Type a message…',
-                hintStyle: const TextStyle(color: Color(0xFF8D99AE)),
-                filled: true,
-                fillColor: const Color(0xFFF0F2F5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+          // Massive Push-to-Talk mic button (walkie-talkie style)
+          _WalkieTalkieMicButton(chatProvider: chatProvider),
+          const SizedBox(height: 16),
+          // Text input row as fallback
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: textController,
+                  enabled: isIdle,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => onSendText(),
+                  decoration: InputDecoration(
+                    hintText: isProcessing
+                        ? 'AI is thinking…'
+                        : isSpeaking
+                            ? 'AI is speaking… (tap mic to interrupt)'
+                            : 'Or type a message…',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFF8D99AE),
+                      fontSize: 14,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF0F2F5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    suffixIcon: isIdle
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.send_rounded,
+                              color: Color(0xFF4361EE),
+                            ),
+                            onPressed: onSendText,
+                          )
+                        : null,
+                  ),
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                suffixIcon: isIdle
-                    ? IconButton(
-                        icon: const Icon(Icons.send_rounded,
-                            color: Color(0xFF4361EE)),
-                        onPressed: onSendText,
-                      )
-                    : null,
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
-          // Push-to-Talk microphone button
-          _MicButton(chatProvider: chatProvider),
         ],
       ),
     );
   }
 }
 
-class _MicButton extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// Walkie-Talkie style mic button with pulse animation
+// ---------------------------------------------------------------------------
+
+class _WalkieTalkieMicButton extends StatefulWidget {
   final ChatProvider chatProvider;
 
-  const _MicButton({required this.chatProvider});
+  const _WalkieTalkieMicButton({required this.chatProvider});
+
+  @override
+  State<_WalkieTalkieMicButton> createState() =>
+      _WalkieTalkieMicButtonState();
+}
+
+class _WalkieTalkieMicButtonState extends State<_WalkieTalkieMicButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_WalkieTalkieMicButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    final isListening = widget.chatProvider.isListening;
+    if (isListening && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (!isListening && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final chatProvider = widget.chatProvider;
     final isListening = chatProvider.isListening;
     final isProcessing = chatProvider.isProcessing;
     final isSpeaking = chatProvider.isSpeaking;
 
-    final bool enabled = !isProcessing && !isSpeaking;
+    // Mic is tappable when idle, listening, or speaking (for interruption).
+    final bool enabled = !isProcessing;
 
     Color bgColor;
-    IconData icon;
-    String tooltip;
+    Widget iconWidget;
+    String label;
 
     if (isListening) {
-      bgColor = Colors.red;
-      icon = Icons.mic_rounded;
-      tooltip = 'Tap to stop';
+      bgColor = const Color(0xFFEF233C);
+      iconWidget = const Icon(Icons.mic_rounded, color: Colors.white, size: 40);
+      label = 'Listening… tap to stop';
     } else if (isProcessing) {
       bgColor = const Color(0xFFFFB347);
-      icon = Icons.hourglass_top_rounded;
-      tooltip = 'AI is thinking…';
+      iconWidget = const SizedBox(
+        width: 36,
+        height: 36,
+        child: CircularProgressIndicator(
+          strokeWidth: 3,
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
+      );
+      label = 'AI is thinking…';
     } else if (isSpeaking) {
       bgColor = const Color(0xFF06D6A0);
-      icon = Icons.volume_up_rounded;
-      tooltip = 'AI is speaking…';
+      iconWidget = const Icon(
+        Icons.mic_rounded,
+        color: Colors.white,
+        size: 40,
+      );
+      label = 'Tap to interrupt & speak';
     } else {
       bgColor = const Color(0xFF4361EE);
-      icon = Icons.mic_none_rounded;
-      tooltip = 'Tap to speak';
+      iconWidget = const Icon(
+        Icons.mic_none_rounded,
+        color: Colors.white,
+        size: 40,
+      );
+      label = 'Tap to speak';
     }
 
+    // Start or stop pulse animation based on state.
+    _syncAnimation();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedBuilder(
+          animation: _pulseAnimation,
+          builder: (context, child) {
+            final scale = isListening ? _pulseAnimation.value : 1.0;
+            return Transform.scale(
+              scale: scale,
+              child: child,
+            );
+          },
+          child: _buildButton(bgColor, iconWidget, enabled),
+        ),
+        const SizedBox(height: 8),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Text(
+            label,
+            key: ValueKey(label),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isListening
+                  ? const Color(0xFFEF233C)
+                  : const Color(0xFF8D99AE),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildButton(Color bgColor, Widget iconWidget, bool enabled) {
     return Tooltip(
-      message: tooltip,
+      message: widget.chatProvider.isListening
+          ? 'Tap to stop'
+          : widget.chatProvider.isSpeaking
+              ? 'Tap to interrupt & speak'
+              : 'Tap to speak',
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 56,
-        height: 56,
+        width: 88,
+        height: 88,
         decoration: BoxDecoration(
-          color: enabled ? bgColor : bgColor.withValues(alpha: 0.5),
+          color: enabled
+              ? bgColor
+              : bgColor.withValues(alpha: 0.5),
           shape: BoxShape.circle,
           boxShadow: enabled
               ? [
                   BoxShadow(
                     color: bgColor.withValues(alpha: 0.4),
-                    blurRadius: 12,
+                    blurRadius: 20,
+                    spreadRadius: 2,
                     offset: const Offset(0, 4),
                   ),
                 ]
@@ -443,14 +588,14 @@ class _MicButton extends StatelessWidget {
             customBorder: const CircleBorder(),
             onTap: enabled
                 ? () async {
-                    if (isListening) {
-                      await chatProvider.stopListening();
+                    if (widget.chatProvider.isListening) {
+                      await widget.chatProvider.stopListening();
                     } else {
-                      await chatProvider.startListening();
+                      await widget.chatProvider.startListening();
                     }
                   }
                 : null,
-            child: Icon(icon, color: Colors.white, size: 26),
+            child: Center(child: iconWidget),
           ),
         ),
       ),
@@ -458,10 +603,15 @@ class _MicButton extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Error banner with dismiss
+// ---------------------------------------------------------------------------
+
 class _ErrorBanner extends StatelessWidget {
   final String error;
+  final VoidCallback onDismiss;
 
-  const _ErrorBanner(this.error);
+  const _ErrorBanner(this.error, {required this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
@@ -478,6 +628,12 @@ class _ErrorBanner extends StatelessWidget {
               error,
               style: const TextStyle(color: Colors.red, fontSize: 13),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.red, size: 18),
+            onPressed: onDismiss,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
         ],
       ),
