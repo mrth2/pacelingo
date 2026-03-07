@@ -25,7 +25,7 @@ void main() {
       final prompt = service.buildSystemPrompt(childProfile);
       expect(prompt, contains('Daughter'));
       expect(prompt, contains('11'));
-      expect(prompt, contains('intermediate'));
+      expect(prompt, contains('Beginner/Pre-Intermediate'));
     });
 
     test('buildSystemPrompt includes personalised teaching rules', () {
@@ -102,6 +102,7 @@ void main() {
       final original = Profile.defaultChild();
       final map = original.toFirestore();
 
+      expect(map['user_id'], original.userId);
       expect(map['name'], original.name);
       expect(map['age'], original.age);
       expect(map['english_level'], original.englishLevel);

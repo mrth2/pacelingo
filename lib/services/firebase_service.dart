@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/profile.dart';
 import '../models/session_summary.dart';
 
 /// Handles Firestore operations for session summaries and user profile context.
@@ -12,6 +13,46 @@ class FirebaseService {
 
   FirebaseService({FirebaseFirestore? db})
       : _db = db ?? FirebaseFirestore.instance;
+
+  // ---------------------------------------------------------------------------
+  // Profile Seeding
+  // ---------------------------------------------------------------------------
+
+  /// Ensures default profiles exist for the given anonymous [userId].
+  ///
+  /// Queries the `profiles` collection for documents belonging to this user.
+  /// If none are found, creates two default profiles (Wife & Daughter) with
+  /// the appropriate system prompt rules and English level.
+  Future<void> ensureDefaultProfilesExist(String userId) async {
+    final snapshot = await _db
+        .collection('profiles')
+        .where('user_id', isEqualTo: userId)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) return;
+
+    final defaults = [
+      Profile.defaultAdult(userId: userId),
+      Profile.defaultChild(userId: userId),
+    ];
+
+    for (final profile in defaults) {
+      await _db
+          .collection('profiles')
+          .doc(profile.id)
+          .set(profile.toFirestore());
+    }
+  }
+
+  /// Fetches all profiles belonging to the given [userId].
+  Future<List<Profile>> getProfilesForUser(String userId) async {
+    final snapshot = await _db
+        .collection('profiles')
+        .where('user_id', isEqualTo: userId)
+        .get();
+    return snapshot.docs.map(Profile.fromFirestore).toList();
+  }
 
   // ---------------------------------------------------------------------------
   // Session Summaries
