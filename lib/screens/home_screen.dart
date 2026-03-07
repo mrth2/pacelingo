@@ -318,6 +318,7 @@ class _ProfileCard extends StatefulWidget {
 }
 
 class _ProfileCardState extends State<_ProfileCard> {
+  static final FirebaseService _firebaseService = FirebaseService();
   int _masteredCount = 0;
 
   Profile get profile => widget.profile;
@@ -338,7 +339,7 @@ class _ProfileCardState extends State<_ProfileCard> {
 
   Future<void> _loadMasteredCount() async {
     try {
-      final count = await FirebaseService()
+      final count = await _firebaseService
           .getMasteredWordCount(profileId: profile.id);
       if (mounted) setState(() => _masteredCount = count);
     } catch (_) {
@@ -356,6 +357,41 @@ class _ProfileCardState extends State<_ProfileCard> {
     if (profile.id.contains('wife')) return Icons.person_rounded;
     if (profile.id.contains('daughter')) return Icons.child_care_rounded;
     return Icons.face_rounded;
+  }
+
+  Widget _buildStreakBadge(bool active) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: active
+            ? const Color(0xFFFF6B35).withValues(alpha: 0.9)
+            : Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '🔥',
+            style: TextStyle(
+              fontSize: 18,
+              color: active ? null : Colors.white.withValues(alpha: 0.4),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '${profile.currentStreak}',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: active
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -436,60 +472,7 @@ class _ProfileCardState extends State<_ProfileCard> {
               const SizedBox(height: 4),
 
               // Streak flame icon
-              if (hasStreak)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B35).withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('🔥', style: TextStyle(fontSize: 18)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${profile.currentStreak}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              if (!hasStreak)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '🔥',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '0',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withValues(alpha: 0.4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _buildStreakBadge(hasStreak),
               const SizedBox(height: 12),
 
               // Icon

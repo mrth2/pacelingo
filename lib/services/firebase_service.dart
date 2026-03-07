@@ -225,7 +225,7 @@ class FirebaseService {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    int newStreak = profile.currentStreak;
+    int newStreak;
     final int newTotal = profile.totalSessions + 1;
 
     if (profile.lastSessionDate != null) {
