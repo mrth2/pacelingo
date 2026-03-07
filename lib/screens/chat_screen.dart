@@ -7,6 +7,7 @@ import '../models/session_summary.dart';
 import '../providers/chat_provider.dart';
 import '../providers/profile_provider.dart';
 import 'summary_screen.dart';
+import 'word_bank_screen.dart';
 
 /// The main tutoring chat screen with an iPad-optimized layout, a massive
 /// walkie-talkie style Push-to-Talk microphone button, chat bubble transcript,
@@ -160,6 +161,22 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       actions: [
+        // Word Bank button
+        if (profile != null)
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => WordBankScreen(
+                    profileId: profile.id,
+                    profileName: profile.name,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.auto_stories_rounded),
+            tooltip: 'Word Bank',
+          ),
         _isEndingSession
             ? const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),

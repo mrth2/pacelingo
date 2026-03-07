@@ -142,6 +142,55 @@ void main() {
       expect(modeIndex, lessThan(correctionIndex));
       expect(correctionIndex, lessThan(focusIndex));
     });
+
+    // -----------------------------------------------------------------------
+    // Reinforcement Words (Word Bank integration)
+    // -----------------------------------------------------------------------
+
+    test('buildSystemPrompt includes reinforcement list when words provided',
+        () {
+      final prompt = service.buildSystemPrompt(
+        childProfile,
+        reinforcementWords: ['eloquent', 'persevere', 'ambiguous'],
+      );
+      expect(prompt, contains('REINFORCEMENT LIST'));
+      expect(prompt, contains('eloquent'));
+      expect(prompt, contains('persevere'));
+      expect(prompt, contains('ambiguous'));
+      expect(prompt, contains('naturally use 1 or 2'));
+    });
+
+    test(
+        'buildSystemPrompt does NOT include reinforcement section when words list is null',
+        () {
+      final prompt = service.buildSystemPrompt(childProfile);
+      expect(prompt, isNot(contains('REINFORCEMENT LIST')));
+    });
+
+    test(
+        'buildSystemPrompt does NOT include reinforcement section when words list is empty',
+        () {
+      final prompt = service.buildSystemPrompt(
+        childProfile,
+        reinforcementWords: [],
+      );
+      expect(prompt, isNot(contains('REINFORCEMENT LIST')));
+    });
+
+    test(
+        'buildSystemPrompt reinforcement section appears after focus section',
+        () {
+      final profileWithFocus =
+          childProfile.copyWith(nextFocus: 'Practice articles.');
+      final prompt = service.buildSystemPrompt(
+        profileWithFocus,
+        reinforcementWords: ['eloquent'],
+      );
+
+      final focusIndex = prompt.indexOf('PRIORITY FOCUS FOR THIS SESSION');
+      final reinforcementIndex = prompt.indexOf('REINFORCEMENT LIST');
+      expect(focusIndex, lessThan(reinforcementIndex));
+    });
   });
 
   group('Profile model', () {
