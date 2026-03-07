@@ -9,6 +9,10 @@ class Profile {
   final String englishLevel;
   final String systemPromptRules;
   final String nextFocus;
+  final int currentStreak;
+  final int longestStreak;
+  final int totalSessions;
+  final DateTime? lastSessionDate;
 
   const Profile({
     required this.id,
@@ -18,6 +22,10 @@ class Profile {
     required this.systemPromptRules,
     this.userId = '',
     this.nextFocus = '',
+    this.currentStreak = 0,
+    this.longestStreak = 0,
+    this.totalSessions = 0,
+    this.lastSessionDate,
   });
 
   /// Creates a [Profile] from a Firestore document snapshot.
@@ -31,6 +39,12 @@ class Profile {
       englishLevel: data['english_level'] as String? ?? 'beginner',
       systemPromptRules: data['system_prompt_rules'] as String? ?? '',
       nextFocus: data['next_focus'] as String? ?? '',
+      currentStreak: (data['current_streak'] as num?)?.toInt() ?? 0,
+      longestStreak: (data['longest_streak'] as num?)?.toInt() ?? 0,
+      totalSessions: (data['total_sessions'] as num?)?.toInt() ?? 0,
+      lastSessionDate: data['last_session_date'] is Timestamp
+          ? (data['last_session_date'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -42,6 +56,11 @@ class Profile {
         'english_level': englishLevel,
         'system_prompt_rules': systemPromptRules,
         'next_focus': nextFocus,
+        'current_streak': currentStreak,
+        'longest_streak': longestStreak,
+        'total_sessions': totalSessions,
+        if (lastSessionDate != null)
+          'last_session_date': Timestamp.fromDate(lastSessionDate!),
       };
 
   /// Creates a default profile for a child learner.
@@ -79,6 +98,10 @@ class Profile {
     String? englishLevel,
     String? systemPromptRules,
     String? nextFocus,
+    int? currentStreak,
+    int? longestStreak,
+    int? totalSessions,
+    DateTime? lastSessionDate,
   }) {
     return Profile(
       id: id ?? this.id,
@@ -88,6 +111,10 @@ class Profile {
       englishLevel: englishLevel ?? this.englishLevel,
       systemPromptRules: systemPromptRules ?? this.systemPromptRules,
       nextFocus: nextFocus ?? this.nextFocus,
+      currentStreak: currentStreak ?? this.currentStreak,
+      longestStreak: longestStreak ?? this.longestStreak,
+      totalSessions: totalSessions ?? this.totalSessions,
+      lastSessionDate: lastSessionDate ?? this.lastSessionDate,
     );
   }
 

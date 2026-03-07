@@ -196,4 +196,73 @@ class FirebaseService {
         .doc(wordId)
         .update({'is_mastered': isMastered});
   }
+
+  /// Returns the count of mastered words in the Word Bank for [profileId].
+  Future<int> getMasteredWordCount({required String profileId}) async {
+    final snapshot = await _db
+        .collection('profiles')
+        .doc(profileId)
+        .collection('word_bank')
+        .where('is_mastered', isEqualTo: true)
+        .get();
+    return snapshot.docs.length;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Streak & Stats
+  // ---------------------------------------------------------------------------
+
+  /// Calculates and persists daily streak and session stats for the profile.
+  ///
+  /// Returns the updated [Profile] with new streak values.
+  /// Streak rules:
+  ///   - If last session was yesterday → increment currentStreak.
+  ///   - If last session was today → keep the same.
+  ///   - If last session was before yesterday (or never) → reset to 1.
+  ///   - Update longestStreak when currentStreak exceeds it.
+  ///   - Always increment totalSessions.
+  Future<Profile> updateStreakAndStats({required Profile profile}) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    int newStreak;
+    final int newTotal = profile.totalSessions + 1;
+
+    if (profile.lastSessionDate != null) {
+      final lastDate = profile.lastSessionDate!;
+      final lastDay = DateTime(lastDate.year, lastDate.month, lastDate.day);
+      final difference = today.difference(lastDay).inDays;
+
+      if (difference == 1) {
+        // Yesterday → increment streak.
+        newStreak = profile.currentStreak + 1;
+      } else if (difference == 0) {
+        // Same day → keep streak unchanged.
+        newStreak = profile.currentStreak;
+      } else {
+        // Missed a day → reset to 1.
+        newStreak = 1;
+      }
+    } else {
+      // First session ever.
+      newStreak = 1;
+    }
+
+    final newLongest =
+        newStreak > profile.longestStreak ? newStreak : profile.longestStreak;
+
+    await _db.collection('profiles').doc(profile.id).update({
+      'current_streak': newStreak,
+      'longest_streak': newLongest,
+      'total_sessions': newTotal,
+      'last_session_date': Timestamp.fromDate(now),
+    });
+
+    return profile.copyWith(
+      currentStreak: newStreak,
+      longestStreak: newLongest,
+      totalSessions: newTotal,
+      lastSessionDate: now,
+    );
+  }
 }

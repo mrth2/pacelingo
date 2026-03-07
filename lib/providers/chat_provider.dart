@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/profile.dart';
 import '../models/session.dart';
@@ -34,6 +35,10 @@ class ChatProvider extends ChangeNotifier {
   String? _lessonModePrompt;
   List<String> _reinforcementWords = [];
   final List<ChatMessage> _messages = [];
+
+  // Streak state (populated after endSession)
+  bool _streakIncreased = false;
+  Profile? _updatedProfile;
 
   // Audio state
   ChatAudioState _audioState = ChatAudioState.idle;
@@ -71,6 +76,12 @@ class ChatProvider extends ChangeNotifier {
   Profile? get profile => _profile;
   String? get lessonModePrompt => _lessonModePrompt;
 
+  /// Whether the streak was incremented during the last [endSession] call.
+  bool get streakIncreased => _streakIncreased;
+
+  /// The profile with updated streak/stats after the last [endSession] call.
+  Profile? get updatedProfile => _updatedProfile;
+
   // ---------------------------------------------------------------------------
   // Initialisation
   // ---------------------------------------------------------------------------
@@ -100,6 +111,15 @@ class ChatProvider extends ChangeNotifier {
     _lessonModePrompt = lessonModePrompt;
     _messages.clear();
     _error = null;
+    _streakIncreased = false;
+    _updatedProfile = null;
+
+    // Prevent the screen from sleeping during the session.
+    try {
+      await WakelockPlus.enable();
+    } catch (_) {
+      // Best-effort; wakelock may not be supported on all platforms.
+    }
 
     // Load the most recent session summary for context continuity.
     final lastSession = await _firestoreService.getLastSession(
@@ -352,12 +372,27 @@ class ChatProvider extends ChangeNotifier {
         profileId: _profile!.id,
         summary: summary,
       );
+
+      // Update streak and session stats.
+      final oldStreak = _profile!.currentStreak;
+      _updatedProfile = await _firebaseService.updateStreakAndStats(
+        profile: _profile!,
+      );
+      _streakIncreased = _updatedProfile!.currentStreak > oldStreak;
     } catch (_) {
       // Summary generation is best-effort; don't block the user from leaving.
     }
 
     await _flutterTts.stop();
     await _speechToText.stop();
+
+    // Disable wakelock now that the session is over.
+    try {
+      await WakelockPlus.disable();
+    } catch (_) {
+      // Best-effort; wakelock may not be supported on all platforms.
+    }
+
     _messages.clear();
     _sessionId = null;
     _audioState = ChatAudioState.idle;
@@ -370,6 +405,11 @@ class ChatProvider extends ChangeNotifier {
   void dispose() {
     _flutterTts.stop();
     _speechToText.stop();
+    try {
+      WakelockPlus.disable();
+    } catch (_) {
+      // Best-effort cleanup.
+    }
     super.dispose();
   }
 }

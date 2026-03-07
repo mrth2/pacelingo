@@ -5,6 +5,7 @@ import '../models/profile.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/profile_provider.dart';
+import '../services/firebase_service.dart';
 import 'chat_screen.dart';
 import 'profile_editor_screen.dart';
 import 'word_bank_screen.dart';
@@ -299,7 +300,7 @@ class _ProfileCards extends StatelessWidget {
   }
 }
 
-class _ProfileCard extends StatelessWidget {
+class _ProfileCard extends StatefulWidget {
   final Profile profile;
   final VoidCallback onTap;
   final VoidCallback onEdit;
@@ -311,6 +312,40 @@ class _ProfileCard extends StatelessWidget {
     required this.onEdit,
     required this.onOpenWordBank,
   });
+
+  @override
+  State<_ProfileCard> createState() => _ProfileCardState();
+}
+
+class _ProfileCardState extends State<_ProfileCard> {
+  static final FirebaseService _firebaseService = FirebaseService();
+  int _masteredCount = 0;
+
+  Profile get profile => widget.profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMasteredCount();
+  }
+
+  @override
+  void didUpdateWidget(_ProfileCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.id != widget.profile.id) {
+      _loadMasteredCount();
+    }
+  }
+
+  Future<void> _loadMasteredCount() async {
+    try {
+      final count = await _firebaseService
+          .getMasteredWordCount(profileId: profile.id);
+      if (mounted) setState(() => _masteredCount = count);
+    } catch (_) {
+      // Best-effort; keep 0 on failure.
+    }
+  }
 
   Color get _primaryColor {
     if (profile.id.contains('wife')) return const Color(0xFF4361EE);
@@ -324,14 +359,50 @@ class _ProfileCard extends StatelessWidget {
     return Icons.face_rounded;
   }
 
+  Widget _buildStreakBadge(bool active) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: active
+            ? const Color(0xFFFF6B35).withValues(alpha: 0.9)
+            : Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '🔥',
+            style: TextStyle(
+              fontSize: 18,
+              color: active ? null : Colors.white.withValues(alpha: 0.4),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '${profile.currentStreak}',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: active
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasNextFocus = profile.nextFocus.isNotEmpty;
+    final hasStreak = profile.currentStreak > 0;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         borderRadius: BorderRadius.circular(24),
         child: Container(
           constraints: const BoxConstraints(minHeight: 320),
@@ -365,7 +436,7 @@ class _ProfileCard extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                       child: InkWell(
-                        onTap: onOpenWordBank,
+                        onTap: widget.onOpenWordBank,
                         borderRadius: BorderRadius.circular(10),
                         child: const Padding(
                           padding: EdgeInsets.all(8),
@@ -383,7 +454,7 @@ class _ProfileCard extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                       child: InkWell(
-                        onTap: onEdit,
+                        onTap: widget.onEdit,
                         borderRadius: BorderRadius.circular(10),
                         child: const Padding(
                           padding: EdgeInsets.all(8),
@@ -399,6 +470,10 @@ class _ProfileCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
+
+              // Streak flame icon
+              _buildStreakBadge(hasStreak),
+              const SizedBox(height: 12),
 
               // Icon
               Container(
@@ -438,6 +513,61 @@ class _ProfileCard extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withValues(alpha: 0.9),
                   ),
+                ),
+              ),
+
+              // Mini-stat row
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 14,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${profile.totalSessions} Sessions',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        '|',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.star_rounded,
+                      size: 14,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_masteredCount Words Mastered',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
