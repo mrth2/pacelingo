@@ -90,4 +90,12 @@ class FirebaseService {
       'next_focus': nextFocus,
     });
   }
+
+  /// Updates a full profile document in Firestore.
+  ///
+  /// Used by the Profile Editor to persist changes to english level,
+  /// system prompt rules, and other editable metadata.
+  Future<void> updateProfile(Profile profile) async {
+    await _db.collection('profiles').doc(profile.id).set(profile.toFirestore());
+  }
 }

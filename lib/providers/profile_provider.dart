@@ -59,4 +59,27 @@ class ProfileProvider extends ChangeNotifier {
     _selectedProfile = null;
     notifyListeners();
   }
+
+  /// Updates a profile in Firestore and refreshes the local profiles list.
+  Future<void> updateProfile(Profile profile) async {
+    try {
+      await _firebaseService.updateProfile(profile);
+
+      // Refresh the local list by replacing the updated profile.
+      final index = _profiles.indexWhere((p) => p.id == profile.id);
+      if (index != -1) {
+        _profiles = List<Profile>.from(_profiles)..[index] = profile;
+      }
+
+      // Update selected profile if it matches.
+      if (_selectedProfile?.id == profile.id) {
+        _selectedProfile = profile;
+      }
+
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
 }

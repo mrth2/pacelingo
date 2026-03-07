@@ -45,8 +45,14 @@ CORRECTION PROTOCOL:
   /// 1. Base role definition (strict/friendly tutor persona)
   /// 2. Profile-specific context (name, age, English level)
   /// 3. Personalised lesson/correction rules from the profile
-  /// 4. A summary of the previous session (if available)
-  String buildSystemPrompt(Profile profile, {String? previousSessionSummary}) {
+  /// 4. Active lesson mode rules (e.g. Pronunciation Guru, Vocabulary Builder)
+  /// 5. A summary of the previous session (if available)
+  /// 6. Next focus area from previous session analysis
+  String buildSystemPrompt(
+    Profile profile, {
+    String? previousSessionSummary,
+    String? lessonModePrompt,
+  }) {
     final buffer = StringBuffer();
 
     // [1] Base role
@@ -64,10 +70,17 @@ CORRECTION PROTOCOL:
     buffer.writeln(profile.systemPromptRules);
     buffer.writeln();
 
-    // [4] Correction protocol (always applied)
+    // [4] Active lesson mode rules
+    if (lessonModePrompt != null && lessonModePrompt.isNotEmpty) {
+      buffer.writeln('ACTIVE LESSON MODE RULES:');
+      buffer.writeln(lessonModePrompt);
+      buffer.writeln();
+    }
+
+    // [5] Correction protocol (always applied)
     buffer.writeln(_correctionProtocol);
 
-    // [5] Previous session context
+    // [6] Previous session context
     if (previousSessionSummary != null && previousSessionSummary.isNotEmpty) {
       buffer.writeln('PREVIOUS SESSION SUMMARY:');
       buffer.writeln(previousSessionSummary);
@@ -77,7 +90,7 @@ CORRECTION PROTOCOL:
       buffer.writeln();
     }
 
-    // [6] Next focus area from previous session analysis
+    // [7] Next focus area from previous session analysis
     if (profile.nextFocus.isNotEmpty) {
       buffer.writeln('PRIORITY FOCUS FOR THIS SESSION:');
       buffer.writeln(profile.nextFocus);
@@ -111,10 +124,12 @@ CORRECTION PROTOCOL:
     required Profile profile,
     required List<ChatMessage> chatHistory,
     String? previousSessionSummary,
+    String? lessonModePrompt,
   }) async {
     final systemPrompt = buildSystemPrompt(
       profile,
       previousSessionSummary: previousSessionSummary,
+      lessonModePrompt: lessonModePrompt,
     );
 
     final history = _buildHistory(chatHistory);

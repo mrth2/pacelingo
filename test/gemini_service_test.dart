@@ -83,6 +83,65 @@ void main() {
       final prompt = service.buildSystemPrompt(childProfile);
       expect(prompt, isNot(contains('PRIORITY FOCUS FOR THIS SESSION')));
     });
+
+    test('buildSystemPrompt includes lesson mode prompt when provided', () {
+      const modePrompt = 'Focus 100% on phonetics.';
+      final prompt = service.buildSystemPrompt(
+        childProfile,
+        lessonModePrompt: modePrompt,
+      );
+      expect(prompt, contains('ACTIVE LESSON MODE RULES'));
+      expect(prompt, contains(modePrompt));
+    });
+
+    test(
+        'buildSystemPrompt does NOT include lesson mode section when prompt is null',
+        () {
+      final prompt = service.buildSystemPrompt(childProfile);
+      expect(prompt, isNot(contains('ACTIVE LESSON MODE RULES')));
+    });
+
+    test(
+        'buildSystemPrompt does NOT include lesson mode section when prompt is empty',
+        () {
+      final prompt = service.buildSystemPrompt(
+        childProfile,
+        lessonModePrompt: '',
+      );
+      expect(prompt, isNot(contains('ACTIVE LESSON MODE RULES')));
+    });
+
+    test('buildSystemPrompt preserves correct hierarchy with all sections', () {
+      final profileWithFocus =
+          adultProfile.copyWith(nextFocus: 'Practice business vocabulary.');
+      const modePrompt = 'Introduce 3 new advanced words.';
+      const sessionSummary = 'Learner practised greetings last time.';
+
+      final prompt = service.buildSystemPrompt(
+        profileWithFocus,
+        previousSessionSummary: sessionSummary,
+        lessonModePrompt: modePrompt,
+      );
+
+      // Verify all sections are present.
+      expect(prompt, contains('PaceLingo'));
+      expect(prompt, contains('LEARNER PROFILE'));
+      expect(prompt, contains('PERSONALISED TEACHING RULES'));
+      expect(prompt, contains('ACTIVE LESSON MODE RULES'));
+      expect(prompt, contains('CORRECTION PROTOCOL'));
+      expect(prompt, contains('PREVIOUS SESSION SUMMARY'));
+      expect(prompt, contains('PRIORITY FOCUS FOR THIS SESSION'));
+
+      // Verify order: Profile Rules → Lesson Mode → Correction Protocol.
+      final rulesIndex = prompt.indexOf('PERSONALISED TEACHING RULES');
+      final modeIndex = prompt.indexOf('ACTIVE LESSON MODE RULES');
+      final correctionIndex = prompt.indexOf('CORRECTION PROTOCOL');
+      final focusIndex = prompt.indexOf('PRIORITY FOCUS FOR THIS SESSION');
+
+      expect(rulesIndex, lessThan(modeIndex));
+      expect(modeIndex, lessThan(correctionIndex));
+      expect(correctionIndex, lessThan(focusIndex));
+    });
   });
 
   group('Profile model', () {

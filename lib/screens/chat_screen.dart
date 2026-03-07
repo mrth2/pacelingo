@@ -12,7 +12,10 @@ import 'summary_screen.dart';
 /// walkie-talkie style Push-to-Talk microphone button, chat bubble transcript,
 /// and text input fallback.
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  /// The name of the active lesson mode (e.g. "Free Talk", "Pronunciation Guru").
+  final String lessonModeName;
+
+  const ChatScreen({super.key, this.lessonModeName = 'Free Talk'});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -129,9 +132,30 @@ class _ChatScreenState extends State<ChatScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           if (profile != null)
-            Text(
-              '${profile.englishLevel} • Age ${profile.age}',
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            Row(
+              children: [
+                Text(
+                  '${profile.englishLevel} • Age ${profile.age}',
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Mode: ${widget.lessonModeName}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
         ],
       ),
