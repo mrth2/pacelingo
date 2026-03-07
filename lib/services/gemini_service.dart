@@ -102,7 +102,7 @@ CORRECTION PROTOCOL:
       buffer.writeln();
     }
 
-    // [8] Reinforcement list from Word Bank
+    // [7] Reinforcement list from Word Bank
     if (reinforcementWords != null && reinforcementWords.isNotEmpty) {
       buffer.writeln('REINFORCEMENT LIST:');
       buffer.writeln(
