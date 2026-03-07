@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/profile.dart';
 import '../models/session_summary.dart';
+import '../models/word_item.dart';
 
 /// Handles Firestore operations for session summaries and user profile context.
 ///
@@ -97,5 +98,102 @@ class FirebaseService {
   /// system prompt rules, and other editable metadata.
   Future<void> updateProfile(Profile profile) async {
     await _db.collection('profiles').doc(profile.id).set(profile.toFirestore());
+  }
+
+  // ---------------------------------------------------------------------------
+  // Word Bank
+  // ---------------------------------------------------------------------------
+
+  /// Syncs vocabulary and mistakes from a [SessionSummary] into the Word Bank.
+  ///
+  /// Iterates through the `vocabulary` and `mistakes` arrays, creating a
+  /// [WordItem] for each. Duplicates (same text, same profile) are skipped.
+  Future<void> syncToWordBank({
+    required String userId,
+    required String profileId,
+    required SessionSummary summary,
+  }) async {
+    final wordBankRef = _db
+        .collection('profiles')
+        .doc(profileId)
+        .collection('word_bank');
+
+    // Fetch existing texts for duplicate prevention.
+    final existing = await wordBankRef.get();
+    final existingTexts = existing.docs
+        .map((doc) => (doc.data()['text'] as String? ?? '').toLowerCase())
+        .toSet();
+
+    // Save vocabulary items.
+    for (final word in summary.vocabulary) {
+      if (word.isEmpty) continue;
+      if (existingTexts.contains(word.toLowerCase())) continue;
+
+      final item = WordItem(
+        id: '', // Firestore will auto-generate
+        text: word,
+        type: WordItemType.vocabulary,
+        createdAt: DateTime.now(),
+      );
+      await wordBankRef.add(item.toFirestore());
+      existingTexts.add(word.toLowerCase());
+    }
+
+    // Save mistake items.
+    for (final mistake in summary.mistakes) {
+      if (mistake.isEmpty) continue;
+      if (existingTexts.contains(mistake.toLowerCase())) continue;
+
+      final item = WordItem(
+        id: '',
+        text: mistake,
+        type: WordItemType.mistake,
+        createdAt: DateTime.now(),
+      );
+      await wordBankRef.add(item.toFirestore());
+      existingTexts.add(mistake.toLowerCase());
+    }
+  }
+
+  /// Fetches all [WordItem]s from the Word Bank for the given [profileId].
+  Future<List<WordItem>> getWordBank({required String profileId}) async {
+    final snapshot = await _db
+        .collection('profiles')
+        .doc(profileId)
+        .collection('word_bank')
+        .orderBy('created_at', descending: true)
+        .get();
+
+    return snapshot.docs.map(WordItem.fromFirestore).toList();
+  }
+
+  /// Fetches the top [limit] "not yet mastered" words for reinforcement.
+  Future<List<WordItem>> getUnmasteredWords({
+    required String profileId,
+    int limit = 10,
+  }) async {
+    final snapshot = await _db
+        .collection('profiles')
+        .doc(profileId)
+        .collection('word_bank')
+        .where('is_mastered', isEqualTo: false)
+        .limit(limit)
+        .get();
+
+    return snapshot.docs.map(WordItem.fromFirestore).toList();
+  }
+
+  /// Toggles the `isMastered` field on a Word Bank item.
+  Future<void> toggleWordMastered({
+    required String profileId,
+    required String wordId,
+    required bool isMastered,
+  }) async {
+    await _db
+        .collection('profiles')
+        .doc(profileId)
+        .collection('word_bank')
+        .doc(wordId)
+        .update({'is_mastered': isMastered});
   }
 }

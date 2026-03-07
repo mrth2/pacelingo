@@ -48,10 +48,12 @@ CORRECTION PROTOCOL:
   /// 4. Active lesson mode rules (e.g. Pronunciation Guru, Vocabulary Builder)
   /// 5. A summary of the previous session (if available)
   /// 6. Next focus area from previous session analysis
+  /// 7. Reinforcement list of words the learner is currently working on
   String buildSystemPrompt(
     Profile profile, {
     String? previousSessionSummary,
     String? lessonModePrompt,
+    List<String>? reinforcementWords,
   }) {
     final buffer = StringBuffer();
 
@@ -100,6 +102,20 @@ CORRECTION PROTOCOL:
       buffer.writeln();
     }
 
+    // [8] Reinforcement list from Word Bank
+    if (reinforcementWords != null && reinforcementWords.isNotEmpty) {
+      buffer.writeln('REINFORCEMENT LIST:');
+      buffer.writeln(
+        'The user is currently learning these words/phrases: '
+        '${reinforcementWords.join(', ')}.',
+      );
+      buffer.writeln(
+        'Try to naturally use 1 or 2 of these in today\'s conversation to '
+        'test their memory.',
+      );
+      buffer.writeln();
+    }
+
     return buffer.toString();
   }
 
@@ -125,11 +141,13 @@ CORRECTION PROTOCOL:
     required List<ChatMessage> chatHistory,
     String? previousSessionSummary,
     String? lessonModePrompt,
+    List<String>? reinforcementWords,
   }) async {
     final systemPrompt = buildSystemPrompt(
       profile,
       previousSessionSummary: previousSessionSummary,
       lessonModePrompt: lessonModePrompt,
+      reinforcementWords: reinforcementWords,
     );
 
     final history = _buildHistory(chatHistory);

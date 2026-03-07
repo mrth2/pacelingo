@@ -7,6 +7,7 @@ import '../providers/chat_provider.dart';
 import '../providers/profile_provider.dart';
 import 'chat_screen.dart';
 import 'profile_editor_screen.dart';
+import 'word_bank_screen.dart';
 
 /// Lesson mode definitions used by the mode selection dialog.
 class LessonMode {
@@ -113,6 +114,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _onOpenWordBank(BuildContext context, Profile profile) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => WordBankScreen(
+          profileId: profile.id,
+          profileName: profile.name,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(child: _ProfileCards(
                     onProfileTap: _onProfileTap,
                     onEditProfile: _onEditProfile,
+                    onOpenWordBank: _onOpenWordBank,
                   )),
                 ],
               ),
@@ -207,10 +220,12 @@ class _Header extends StatelessWidget {
 class _ProfileCards extends StatelessWidget {
   final Future<void> Function(BuildContext, Profile) onProfileTap;
   final void Function(BuildContext, Profile) onEditProfile;
+  final void Function(BuildContext, Profile) onOpenWordBank;
 
   const _ProfileCards({
     required this.onProfileTap,
     required this.onEditProfile,
+    required this.onOpenWordBank,
   });
 
   @override
@@ -273,6 +288,7 @@ class _ProfileCards extends StatelessWidget {
                   profile: profile,
                   onTap: () => onProfileTap(context, profile),
                   onEdit: () => onEditProfile(context, profile),
+                  onOpenWordBank: () => onOpenWordBank(context, profile),
                 ),
               ),
             );
@@ -287,11 +303,13 @@ class _ProfileCard extends StatelessWidget {
   final Profile profile;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onOpenWordBank;
 
   const _ProfileCard({
     required this.profile,
     required this.onTap,
     required this.onEdit,
+    required this.onOpenWordBank,
   });
 
   Color get _primaryColor {
@@ -336,24 +354,48 @@ class _ProfileCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Edit icon (top-right aligned)
+              // Top-right action icons
               Align(
                 alignment: Alignment.topRight,
-                child: Material(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                  child: InkWell(
-                    onTap: onEdit,
-                    borderRadius: BorderRadius.circular(10),
-                    child: const Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Icon(
-                        Icons.settings_rounded,
-                        size: 20,
-                        color: Colors.white,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Word Bank button
+                    Material(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        onTap: onOpenWordBank,
+                        borderRadius: BorderRadius.circular(10),
+                        child: const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.auto_stories_rounded,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    // Edit button
+                    Material(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        onTap: onEdit,
+                        borderRadius: BorderRadius.circular(10),
+                        child: const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.settings_rounded,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 4),

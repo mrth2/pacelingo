@@ -32,6 +32,7 @@ class ChatProvider extends ChangeNotifier {
   Profile? _profile;
   String? _previousSessionSummary;
   String? _lessonModePrompt;
+  List<String> _reinforcementWords = [];
   final List<ChatMessage> _messages = [];
 
   // Audio state
@@ -106,6 +107,16 @@ class ChatProvider extends ChangeNotifier {
       profileId: profile.id,
     );
     _previousSessionSummary = lastSession?.autoSummary;
+
+    // Fetch reinforcement words from the Word Bank for the system prompt.
+    try {
+      final unmasteredItems = await _firebaseService.getUnmasteredWords(
+        profileId: profile.id,
+      );
+      _reinforcementWords = unmasteredItems.map((w) => w.text).toList();
+    } catch (_) {
+      _reinforcementWords = [];
+    }
 
     // Create a new session in Firestore.
     _sessionId = await _firestoreService.createSession(
@@ -254,6 +265,7 @@ class ChatProvider extends ChangeNotifier {
             chatHistory: _messages,
             previousSessionSummary: _previousSessionSummary,
             lessonModePrompt: _lessonModePrompt,
+            reinforcementWords: _reinforcementWords,
           )
           .timeout(
             const Duration(seconds: 30),
@@ -333,6 +345,13 @@ class ChatProvider extends ChangeNotifier {
           nextFocus: summary.nextFocus,
         );
       }
+
+      // Sync vocabulary and mistakes to the Word Bank (best-effort).
+      await _firebaseService.syncToWordBank(
+        userId: _userId!,
+        profileId: _profile!.id,
+        summary: summary,
+      );
     } catch (_) {
       // Summary generation is best-effort; don't block the user from leaving.
     }
