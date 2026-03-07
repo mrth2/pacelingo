@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/session.dart';
 import '../models/session_summary.dart';
@@ -31,6 +32,12 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
+    // Ensure wakelock is released if user navigates away without ending session.
+    try {
+      WakelockPlus.disable();
+    } catch (_) {
+      // Best-effort cleanup.
+    }
     super.dispose();
   }
 
@@ -55,6 +62,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final profileProvider = context.read<ProfileProvider>();
 
     final summary = await chatProvider.endSession();
+    final streakIncreased = chatProvider.streakIncreased;
+    final updatedProfile = chatProvider.updatedProfile;
     profileProvider.clearSelection();
 
     if (!context.mounted) return;
@@ -64,6 +73,8 @@ class _ChatScreenState extends State<ChatScreen> {
       MaterialPageRoute<void>(
         builder: (_) => SummaryScreen(
           summary: summary ?? const SessionSummary.empty(),
+          streakIncreased: streakIncreased,
+          currentStreak: updatedProfile?.currentStreak ?? 0,
         ),
       ),
     );

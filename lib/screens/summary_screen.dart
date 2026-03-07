@@ -6,10 +6,18 @@ import '../models/session_summary.dart';
 ///
 /// Shows a "Great job!" message, lists mistakes to review, displays new
 /// vocabulary, and provides a "Back to Home" button.
+/// When a streak was increased, shows a celebratory streak banner.
 class SummaryScreen extends StatelessWidget {
   final SessionSummary summary;
+  final bool streakIncreased;
+  final int currentStreak;
 
-  const SummaryScreen({super.key, required this.summary});
+  const SummaryScreen({
+    super.key,
+    required this.summary,
+    this.streakIncreased = false,
+    this.currentStreak = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +34,10 @@ class SummaryScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 24),
                   _buildHeader(),
+                  if (streakIncreased && currentStreak > 0) ...[
+                    const SizedBox(height: 24),
+                    _StreakCelebration(streak: currentStreak),
+                  ],
                   const SizedBox(height: 40),
                   if (summary.mistakes.isNotEmpty) ...[
                     _buildSection(
@@ -282,6 +294,108 @@ class SummaryScreen extends StatelessWidget {
           ),
           elevation: 2,
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Streak Celebration Widget
+// ---------------------------------------------------------------------------
+
+class _StreakCelebration extends StatefulWidget {
+  final int streak;
+
+  const _StreakCelebration({required this.streak});
+
+  @override
+  State<_StreakCelebration> createState() => _StreakCelebrationState();
+}
+
+class _StreakCelebrationState extends State<_StreakCelebration>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF6B35), Color(0xFFFF4500)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF6B35).withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _scaleAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: child,
+              );
+            },
+            child: const Text(
+              '🔥',
+              style: TextStyle(fontSize: 44),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${widget.streak} Day Streak!',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Awesome job! Keep it up! 🎉',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
