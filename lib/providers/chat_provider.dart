@@ -4,6 +4,8 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 import '../models/profile.dart';
 import '../models/session.dart';
+import '../models/session_summary.dart';
+import '../services/firebase_service.dart';
 import '../services/firestore_service.dart';
 import '../services/gemini_service.dart';
 
@@ -20,6 +22,7 @@ enum ChatAudioState {
 class ChatProvider extends ChangeNotifier {
   final GeminiService _geminiService;
   final FirestoreService _firestoreService;
+  final FirebaseService _firebaseService;
   final SpeechToText _speechToText;
   final FlutterTts _flutterTts;
 
@@ -40,10 +43,12 @@ class ChatProvider extends ChangeNotifier {
   ChatProvider({
     required GeminiService geminiService,
     FirestoreService? firestoreService,
+    FirebaseService? firebaseService,
     SpeechToText? speechToText,
     FlutterTts? flutterTts,
   })  : _geminiService = geminiService,
         _firestoreService = firestoreService ?? FirestoreService(),
+        _firebaseService = firebaseService ?? FirebaseService(),
         _speechToText = speechToText ?? SpeechToText(),
         _flutterTts = flutterTts ?? FlutterTts() {
     _initTts();
@@ -279,19 +284,47 @@ class ChatProvider extends ChangeNotifier {
   // Session End
   // ---------------------------------------------------------------------------
 
-  /// Ends the session: generates an AI summary and saves it to Firestore.
-  Future<void> endSession() async {
-    if (_sessionId == null || _profile == null || _messages.isEmpty) return;
+  /// Ends the session: generates an AI summary and structured analysis,
+  /// saves them to Firestore, and returns the [SessionSummary].
+  ///
+  /// Returns `null` if there is no active session or messages.
+  Future<SessionSummary?> endSession() async {
+    if (_sessionId == null || _profile == null || _messages.isEmpty) return null;
+
+    SessionSummary summary = const SessionSummary.empty();
 
     try {
-      final summary = await _geminiService.generateSessionSummary(
+      // Generate the traditional text summary for Firestore continuity.
+      final textSummary = await _geminiService.generateSessionSummary(
         profile: _profile!,
         chatHistory: _messages,
       );
       await _firestoreService.updateSessionSummary(
         sessionId: _sessionId!,
+        summary: textSummary,
+      );
+
+      // Generate structured JSON analysis for the summary screen.
+      final rawAnalysis = await _geminiService.analyzeSession(
+        profile: _profile!,
+        chatHistory: _messages,
+      );
+      summary = SessionSummary.fromGeminiResponse(rawAnalysis);
+
+      // Save structured summary to Firestore.
+      await _firebaseService.saveSessionSummary(
+        sessionId: _sessionId!,
+        userId: _userId!,
         summary: summary,
       );
+
+      // Update the user's profile with the next_focus for the next session.
+      if (summary.nextFocus.isNotEmpty) {
+        await _firebaseService.updateUserProfileContext(
+          profileId: _profile!.id,
+          nextFocus: summary.nextFocus,
+        );
+      }
     } catch (_) {
       // Summary generation is best-effort; don't block the user from leaving.
     }
@@ -302,6 +335,8 @@ class ChatProvider extends ChangeNotifier {
     _sessionId = null;
     _audioState = ChatAudioState.idle;
     notifyListeners();
+
+    return summary;
   }
 
   @override

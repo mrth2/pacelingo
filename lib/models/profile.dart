@@ -7,6 +7,7 @@ class Profile {
   final int age;
   final String englishLevel;
   final String systemPromptRules;
+  final String nextFocus;
 
   const Profile({
     required this.id,
@@ -14,6 +15,7 @@ class Profile {
     required this.age,
     required this.englishLevel,
     required this.systemPromptRules,
+    this.nextFocus = '',
   });
 
   /// Creates a [Profile] from a Firestore document snapshot.
@@ -25,6 +27,7 @@ class Profile {
       age: (data['age'] as num?)?.toInt() ?? 0,
       englishLevel: data['english_level'] as String? ?? 'beginner',
       systemPromptRules: data['system_prompt_rules'] as String? ?? '',
+      nextFocus: data['next_focus'] as String? ?? '',
     );
   }
 
@@ -34,6 +37,7 @@ class Profile {
         'age': age,
         'english_level': englishLevel,
         'system_prompt_rules': systemPromptRules,
+        'next_focus': nextFocus,
       };
 
   /// Creates a default profile for a child learner.
@@ -66,6 +70,7 @@ class Profile {
     int? age,
     String? englishLevel,
     String? systemPromptRules,
+    String? nextFocus,
   }) {
     return Profile(
       id: id ?? this.id,
@@ -73,6 +78,7 @@ class Profile {
       age: age ?? this.age,
       englishLevel: englishLevel ?? this.englishLevel,
       systemPromptRules: systemPromptRules ?? this.systemPromptRules,
+      nextFocus: nextFocus ?? this.nextFocus,
     );
   }
 

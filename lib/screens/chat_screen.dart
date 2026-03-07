@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import '../models/session.dart';
+import '../models/session_summary.dart';
 import '../providers/chat_provider.dart';
 import '../providers/profile_provider.dart';
+import 'summary_screen.dart';
 
 /// The main tutoring chat screen with an iPad-optimized layout, a massive
 /// walkie-talkie style Push-to-Talk microphone button, chat bubble transcript,
@@ -19,6 +21,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isEndingSession = false;
 
   @override
   void dispose() {
@@ -40,14 +43,26 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _endSession(BuildContext context) async {
+    if (_isEndingSession) return;
+
+    setState(() => _isEndingSession = true);
+
     final chatProvider = context.read<ChatProvider>();
     final profileProvider = context.read<ProfileProvider>();
 
-    await chatProvider.endSession();
+    final summary = await chatProvider.endSession();
     profileProvider.clearSelection();
 
     if (!context.mounted) return;
-    Navigator.of(context).pop();
+
+    // Navigate to Summary Screen, replacing the chat screen.
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => SummaryScreen(
+          summary: summary ?? const SessionSummary.empty(),
+        ),
+      ),
+    );
   }
 
   void _onSendText(BuildContext context) {
@@ -121,11 +136,25 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       actions: [
-        TextButton.icon(
-          onPressed: () => _endSession(context),
-          icon: const Icon(Icons.stop_circle_outlined, color: Colors.white),
-          label: const Text('End', style: TextStyle(color: Colors.white)),
-        ),
+        _isEndingSession
+            ? const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              )
+            : TextButton.icon(
+                onPressed: () => _endSession(context),
+                icon: const Icon(Icons.stop_circle_outlined,
+                    color: Colors.white),
+                label:
+                    const Text('End Session', style: TextStyle(color: Colors.white)),
+              ),
       ],
     );
   }

@@ -77,6 +77,16 @@ CORRECTION PROTOCOL:
       buffer.writeln();
     }
 
+    // [6] Next focus area from previous session analysis
+    if (profile.nextFocus.isNotEmpty) {
+      buffer.writeln('PRIORITY FOCUS FOR THIS SESSION:');
+      buffer.writeln(profile.nextFocus);
+      buffer.writeln(
+        'Incorporate this focus area naturally into the session when appropriate.',
+      );
+      buffer.writeln();
+    }
+
     return buffer.toString();
   }
 
@@ -157,6 +167,38 @@ Be specific so the tutor can continue effectively in the next session.
     } on GenerativeAIException catch (e) {
       throw GeminiServiceException(
           'Failed to generate session summary: ${e.message}');
+    }
+  }
+
+  /// Analyzes the session chat history and returns a structured JSON response
+  /// with 'mistakes', 'vocabulary', and 'next_focus' keys.
+  ///
+  /// This is sent as a background, non-vocal prompt to Gemini after the user
+  /// ends a session. The raw JSON string response is returned for parsing by
+  /// the caller.
+  Future<String> analyzeSession({
+    required Profile profile,
+    required List<ChatMessage> chatHistory,
+  }) async {
+    if (chatHistory.isEmpty) return '{}';
+
+    final historyText = chatHistory
+        .map((m) => '${m.role == 'model' ? 'Tutor' : profile.name}: ${m.text}')
+        .join('\n');
+
+    const analysisInstruction = '''
+Analyze this English learning conversation. Output a JSON format with 3 keys: 'mistakes' (array of grammar/pronunciation errors made by the user), 'vocabulary' (array of new words used/taught), and 'next_focus' (a short string recommending what the tutor should focus on next time).
+Respond ONLY with valid JSON, no additional text or markdown formatting.
+''';
+
+    final prompt = '$analysisInstruction\n\nSESSION TRANSCRIPT:\n$historyText';
+
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      return response.text ?? '{}';
+    } on GenerativeAIException catch (e) {
+      throw GeminiServiceException(
+          'Failed to analyze session: ${e.message}');
     }
   }
 }
