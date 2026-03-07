@@ -6,6 +6,49 @@ import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/profile_provider.dart';
 import 'chat_screen.dart';
+import 'profile_editor_screen.dart';
+
+/// Lesson mode definitions used by the mode selection dialog.
+class LessonMode {
+  final String name;
+  final String description;
+  final IconData icon;
+  final String? prompt;
+
+  const LessonMode({
+    required this.name,
+    required this.description,
+    required this.icon,
+    this.prompt,
+  });
+}
+
+const List<LessonMode> _lessonModes = [
+  LessonMode(
+    name: 'Free Talk',
+    description: 'Standard conversation practice',
+    icon: Icons.chat_bubble_outline_rounded,
+    prompt: null,
+  ),
+  LessonMode(
+    name: 'Pronunciation Guru',
+    description: 'Focus on phonetics and pronunciation',
+    icon: Icons.record_voice_over_rounded,
+    prompt:
+        'Focus 100% on phonetics. If a word is mispronounced, provide a '
+        'phonetic breakdown (e.g., \'Schedule\' is /ˈʃɛdjuːl/) and ask to '
+        'repeat. Correct every pronunciation error immediately.',
+  ),
+  LessonMode(
+    name: 'Vocabulary Builder',
+    description: 'Learn new advanced words',
+    icon: Icons.menu_book_rounded,
+    prompt:
+        'Try to introduce 3 new advanced words related to the topic and '
+        'explain their meanings. Use each word in an example sentence and '
+        'ask the learner to create their own sentence with it.',
+  ),
+];
 
 /// The Home Screen (Profile Selection Dashboard).
 ///
@@ -33,6 +76,15 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     Profile profile,
   ) async {
+    // Show mode selection dialog before starting the session.
+    final selectedMode = await showDialog<LessonMode>(
+      context: context,
+      builder: (_) => const _LessonModeDialog(),
+    );
+
+    // User cancelled the dialog.
+    if (selectedMode == null || !context.mounted) return;
+
     final authProvider = context.read<AuthProvider>();
     final profileProvider = context.read<ProfileProvider>();
     final chatProvider = context.read<ChatProvider>();
@@ -42,12 +94,21 @@ class _HomeScreenState extends State<HomeScreen> {
     await chatProvider.startSession(
       userId: authProvider.userId!,
       profile: profile,
+      lessonModePrompt: selectedMode.prompt,
     );
 
     if (!context.mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => const ChatScreen(),
+        builder: (_) => ChatScreen(lessonModeName: selectedMode.name),
+      ),
+    );
+  }
+
+  void _onEditProfile(BuildContext context, Profile profile) {
+    Navigator.of(context).push(
+      MaterialPageRoute<Profile>(
+        builder: (_) => ProfileEditorScreen(profile: profile),
       ),
     );
   }
@@ -81,7 +142,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(fontSize: 15, color: Color(0xFF8D99AE)),
                   ),
                   const SizedBox(height: 36),
-                  Expanded(child: _ProfileCards(onProfileTap: _onProfileTap)),
+                  Expanded(child: _ProfileCards(
+                    onProfileTap: _onProfileTap,
+                    onEditProfile: _onEditProfile,
+                  )),
                 ],
               ),
             ),
@@ -142,8 +206,12 @@ class _Header extends StatelessWidget {
 
 class _ProfileCards extends StatelessWidget {
   final Future<void> Function(BuildContext, Profile) onProfileTap;
+  final void Function(BuildContext, Profile) onEditProfile;
 
-  const _ProfileCards({required this.onProfileTap});
+  const _ProfileCards({
+    required this.onProfileTap,
+    required this.onEditProfile,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +272,7 @@ class _ProfileCards extends StatelessWidget {
                 child: _ProfileCard(
                   profile: profile,
                   onTap: () => onProfileTap(context, profile),
+                  onEdit: () => onEditProfile(context, profile),
                 ),
               ),
             );
@@ -217,8 +286,13 @@ class _ProfileCards extends StatelessWidget {
 class _ProfileCard extends StatelessWidget {
   final Profile profile;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
 
-  const _ProfileCard({required this.profile, required this.onTap});
+  const _ProfileCard({
+    required this.profile,
+    required this.onTap,
+    required this.onEdit,
+  });
 
   Color get _primaryColor {
     if (profile.id.contains('wife')) return const Color(0xFF4361EE);
@@ -262,6 +336,28 @@ class _ProfileCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Edit icon (top-right aligned)
+              Align(
+                alignment: Alignment.topRight,
+                child: Material(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    onTap: onEdit,
+                    borderRadius: BorderRadius.circular(10),
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.settings_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+
               // Icon
               Container(
                 width: 80,
@@ -368,6 +464,139 @@ class _ProfileCard extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lesson Mode Selection Dialog
+// ---------------------------------------------------------------------------
+
+class _LessonModeDialog extends StatelessWidget {
+  const _LessonModeDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4361EE).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.school_rounded,
+                        color: Color(0xFF4361EE), size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Select Lesson Mode',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D3142),
+                          ),
+                        ),
+                        Text(
+                          'Choose how you want to practise',
+                          style:
+                              TextStyle(fontSize: 13, color: Color(0xFF8D99AE)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              ..._lessonModes.map(
+                (mode) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _LessonModeTile(
+                    mode: mode,
+                    onTap: () => Navigator.of(context).pop(mode),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LessonModeTile extends StatelessWidget {
+  final LessonMode mode;
+  final VoidCallback onTap;
+
+  const _LessonModeTile({required this.mode, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF8F9FA),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4361EE).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child:
+                    Icon(mode.icon, color: const Color(0xFF4361EE), size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      mode.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2D3142),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      mode.description,
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF8D99AE)),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios_rounded,
+                  size: 16, color: Color(0xFF8D99AE)),
             ],
           ),
         ),

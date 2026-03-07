@@ -31,6 +31,7 @@ class ChatProvider extends ChangeNotifier {
   String? _userId;
   Profile? _profile;
   String? _previousSessionSummary;
+  String? _lessonModePrompt;
   final List<ChatMessage> _messages = [];
 
   // Audio state
@@ -67,6 +68,7 @@ class ChatProvider extends ChangeNotifier {
   bool get hasError => _error != null;
   String? get error => _error;
   Profile? get profile => _profile;
+  String? get lessonModePrompt => _lessonModePrompt;
 
   // ---------------------------------------------------------------------------
   // Initialisation
@@ -84,12 +86,17 @@ class ChatProvider extends ChangeNotifier {
   }
 
   /// Initialises a new session for [userId] using [profile].
+  ///
+  /// An optional [lessonModePrompt] can be provided to inject lesson-mode
+  /// specific rules into the system prompt for the entire session.
   Future<void> startSession({
     required String userId,
     required Profile profile,
+    String? lessonModePrompt,
   }) async {
     _userId = userId;
     _profile = profile;
+    _lessonModePrompt = lessonModePrompt;
     _messages.clear();
     _error = null;
 
@@ -246,6 +253,7 @@ class ChatProvider extends ChangeNotifier {
             profile: _profile!,
             chatHistory: _messages,
             previousSessionSummary: _previousSessionSummary,
+            lessonModePrompt: _lessonModePrompt,
           )
           .timeout(
             const Duration(seconds: 30),
