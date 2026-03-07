@@ -8,7 +8,8 @@ import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/profile_provider.dart';
-import 'screens/profile_selection_screen.dart';
+import 'screens/home_screen.dart';
+import 'services/firebase_service.dart';
 import 'services/firestore_service.dart';
 import 'services/gemini_service.dart';
 
@@ -45,6 +46,7 @@ class PaceLingo extends StatelessWidget {
         ChangeNotifierProvider<ProfileProvider>(
           create: (_) => ProfileProvider(
             firestoreService: FirestoreService(),
+            firebaseService: FirebaseService(),
           ),
         ),
         ChangeNotifierProvider<ChatProvider>(
@@ -83,7 +85,7 @@ class PaceLingo extends StatelessWidget {
 }
 
 /// Handles the authentication gate: shows a loading indicator while Firebase
-/// Anonymous Auth is in progress, then proceeds to [ProfileSelectionScreen].
+/// Anonymous Auth is in progress, then proceeds to [HomeScreen].
 class _AuthGate extends StatelessWidget {
   const _AuthGate();
 
@@ -127,6 +129,6 @@ class _AuthGate extends StatelessWidget {
       );
     }
 
-    return const ProfileSelectionScreen();
+    return const HomeScreen();
   }
 }

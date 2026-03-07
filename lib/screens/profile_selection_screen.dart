@@ -21,7 +21,8 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProfileProvider>().loadProfiles();
+      final userId = context.read<AuthProvider>().userId;
+      context.read<ProfileProvider>().loadProfiles(userId: userId);
     });
   }
 
